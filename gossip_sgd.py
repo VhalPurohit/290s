@@ -30,6 +30,7 @@ import torch.nn as nn
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
+import torchvision
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -537,22 +538,23 @@ def update_learning_rate(optimizer, epoch, itr=None, itr_per_epoch=None,
 
 
 def make_dataloader(args, train=True):
-    """ Returns train/val distributed dataloaders (cf. ImageNet in 1hr) """
+    """ Returns train/val distributed dataloaders MNIST """
 
     data_dir = args.dataset_dir
     train_dir = os.path.join(data_dir, 'train')
     val_dir = os.path.join(data_dir, 'val')
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                  std=[0.229, 0.224, 0.225])
 
     if train:
-        log.debug('fpaths train {}'.format(train_dir))
-        train_dataset = datasets.ImageFolder(
-            train_dir, transforms.Compose([
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(), transforms.ToTensor(),
-                normalize]))
+        # log.debug('fpaths train {}'.format(train_dir))
+        train_dataset = datasets.MNIST('/files/', train=True, download=True,
+                                    transform=torchvision.transforms.Compose([
+                                    torchvision.transforms.ToTensor(),
+                                    torchvision.transforms.Normalize(
+                                        (0.1307,), (0.3081,))
+                                    ]))
 
         # sampler produces indices used to assign each agent data samples
         train_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -569,14 +571,15 @@ def make_dataloader(args, train=True):
         return train_loader, train_sampler
 
     else:
-        log.debug('fpaths val {}'.format(val_dir))
+        # log.debug('fpaths val {}'.format(val_dir))
 
         val_loader = torch.utils.data.DataLoader(
-            datasets.ImageFolder(val_dir, transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize])),
+            torchvision.datasets.MNIST('/files/', train=False, download=True,
+                                    transform=torchvision.transforms.Compose([
+                                    torchvision.transforms.ToTensor(),
+                                    torchvision.transforms.Normalize(
+                                        (0.1307,), (0.3081,))
+                                    ])),
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.num_dataloader_workers, pin_memory=True)
 
