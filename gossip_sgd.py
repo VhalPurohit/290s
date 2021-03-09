@@ -145,7 +145,7 @@ parser.add_argument('--overwrite_checkpoints', default='True', type=str,
                          'False: overwrite checkpoints from one epoch to next')
 parser.add_argument('--master_port', default='40100', type=str,
                     help='port used to initialize distributed backend')
-parser.add_argument('--checkpoint_dir', type=str,
+parser.add_argument('--checkpoint_dir', default="./", type=str,
                     help='directory for saving log-files')
 parser.add_argument('--network_interface_type', default='infiniband',
                     choices=['infiniband', 'ethernet'],
