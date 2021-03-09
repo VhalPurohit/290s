@@ -615,7 +615,52 @@ def parse_args():
         Master address <-- $SLRUM_NODENAME of rank 0 process (or HOSTNAME)
         Master port <-- any free port (doesn't really matter)
     """
-    args = parser.parse_args()
+    class DataStore():
+        
+        def __init__(self):
+
+            self.all_reduce = 'False'
+            self.batch_size = 32
+            self.lr = 0.1
+            self.num_dataloader_workers = 10
+            self.num_epochs = 90
+            self.num_iterations_per_training_epoch = None
+            self.momentum = 0.9
+            self.weight_decay = 1e-4
+            self.push_sum = 'True'
+            self.graph_type = 5
+            self.mixing_strategy = 0
+            self.schedule = None
+            self.peers_per_itr_schedule = None
+            self.overlap = 'False'
+            self.synch_freq = 0
+            self.warmup = 'False'
+            self.seed = 47
+            self.print_freq = 10
+            self.checkpoint_all = 'False'
+            self.overwrite_checkpoints = 'True'
+            self.master_port = '40100'
+            self.checkpoint_dir = "./"
+            self.network_interface_type = 'infiniband'
+            self.num_itr_ignore = 10
+            self.dataset_dir = 
+            self.no_cuda_streams = None
+
+
+            self.master_addr = None
+            self.backend = 'nccl'
+            
+            self.rank = 1
+            self.world_size = 5
+            self.tag = ''
+            self.out_fname = ''
+            self.resume = 'False'
+            self.verbose = 'True'
+            self.train_fast = 'False'
+            self.nesterov = 'False'
+
+
+    args = DataStore() #parser.parse_args()
     ClusterManager.set_checkpoint_dir(args.checkpoint_dir)
 
     # rank and world_size need to be changed depending on the scheduler being
