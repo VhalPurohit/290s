@@ -615,8 +615,8 @@ def parse_args():
     # used to run the distributed jobs
     args.master_addr = os.environ['HOSTNAME']
     if args.backend == 'mpi':
-        args.rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
-        args.world_size = int(os.environ['OMPI_UNIVERSE_SIZE'])
+        args.rank = 1 #int(os.environ['OMPI_COMM_WORLD_RANK'])
+        args.world_size = 5#int(os.environ['OMPI_UNIVERSE_SIZE'])
     else:
         args.rank = int(os.environ['SLURM_PROCID'])
         args.world_size = int(os.environ['SLURM_NTASKS'])
