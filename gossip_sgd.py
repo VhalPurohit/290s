@@ -71,98 +71,98 @@ import sys
 sys.argv=['']
 del sys
 
-# --------------------------------------------------------------------------- #
-# Parse command line arguments (CLAs):
-# --------------------------------------------------------------------------- #
-parser = argparse.ArgumentParser(description='Playground')
-parser.add_argument('--all_reduce', default='False', type=str,
-                    help='whether to use all-reduce or gossip')
-parser.add_argument('--batch_size', default=32, type=int,
-                    help='per-agent batch size')
-parser.add_argument('--lr', default=0.1, type=float,
-                    help='reference learning rate (for 256 sample batch-size)')
-parser.add_argument('--num_dataloader_workers', default=10, type=int,
-                    help='number of dataloader workers to fork from main')
-parser.add_argument('--num_epochs', default=90, type=int,
-                    help='number of epochs to train')
-parser.add_argument('--num_iterations_per_training_epoch', default=None,
-                    type=int, help='number of iterations to run in the '
-                    'training loop. To be used only for testing - to allow '
-                    'training loop to exit early. None indicates that the '
-                    'number of iterations per epoch will be '
-                    '(num training instances)/(batch size)')
-parser.add_argument('--momentum', default=0.9, type=float,
-                    help='optimization momentum')
-parser.add_argument('--weight_decay', default=1e-4, type=float,
-                    help='regularization applied to non batch-norm weights')
-parser.add_argument('--nesterov', default='False', type=str,
-                    help='whether to use nesterov style momentum'
-                         'otherwise will use regular Polyak momentum')
-parser.add_argument('--push_sum', default='True', type=str,
-                    help='whether to use push-sum or push-pull gossip')
-parser.add_argument('--graph_type', default=5, type=int,
-                    choices=GRAPH_TOPOLOGIES,
-                    help='the graph topology to use for gossip'
-                         'cf. the gossip graph_manager for available'
-                         'graph topologies and their corresponding int-id')
-parser.add_argument('--mixing_strategy', default=0, type=int,
-                    choices=MIXING_STRATEGIES,
-                    help='the mixing strategy to use for gossip'
-                         'cf. the gossip mixing_manager for available'
-                         'mixing strategies and their corresponding int-id.')
-parser.add_argument('--schedule', nargs='+', default=None,
-                    type=float, help='learning rate schedule')
-parser.add_argument('--peers_per_itr_schedule', nargs='+', type=int,
-                    help='epoch schedule of num peers to send msgs to;'
-                         'the expected format is list[epoch, num_peers]'
-                         'if manually specifying peers_per_itr_schedule,'
-                         'you must specify num_peers at epoch 0; i.e.,'
-                         'list must contain: 0, __num_peers_at_epoch_0__')
-parser.add_argument('--overlap', default='False', type=str,
-                    help='whether to overlap communication with computation')
-parser.add_argument('--synch_freq', default=0, type=int,
-                    help='max number of iterations to go without synchronizing'
-                         'communication between nodes')
-parser.add_argument('--warmup', default='False', type=str,
-                    help='whether to warmup learning rate for first 5 epochs')
-parser.add_argument('--seed', default=47, type=int,
-                    help='seed used for ALL stochastic elements in script')
-parser.add_argument('--resume', default='False', type=str,
-                    help='whether to resume from previously saved checkpoint')
-parser.add_argument('--backend', default='nccl',
-                    choices=['nccl', 'gloo', 'mpi'],
-                    help='torch.distributed backend')
-parser.add_argument('--tag', default='', type=str,
-                    help='tag used to prepend checkpoint file names')
-parser.add_argument('--print_freq', default=10, type=int,
-                    help='frequency (itr.) with which to print train stats')
-parser.add_argument('--verbose', default='True', type=str,
-                    help='whether to log everything or just warnings/errors')
-parser.add_argument('--train_fast', default='False', type=str,
-                    help='whether to run script with only one validation run'
-                         '(at the end once the model is trained)')
-parser.add_argument('--checkpoint_all', default='False', type=str,
-                    help='True: save each agents model at each epoch'
-                         'False: save just one (rank 0) model at each epoch')
-parser.add_argument('--overwrite_checkpoints', default='True', type=str,
-                    help='True: save checkpoint at each epoch with unique tag'
-                         'False: overwrite checkpoints from one epoch to next')
-parser.add_argument('--master_port', default='40100', type=str,
-                    help='port used to initialize distributed backend')
-parser.add_argument('--checkpoint_dir', default="./", type=str,
-                    help='directory for saving log-files')
-parser.add_argument('--network_interface_type', default='infiniband',
-                    choices=['infiniband', 'ethernet'],
-                    help='network interface type to be used for communication')
-parser.add_argument('--num_itr_ignore', type=int, default=10,
-                    help='number of iterations to ignore before timing. A '
-                         'value of 0 would imply no iterations should be '
-                         'ignored')
-parser.add_argument('--dataset_dir', type=str)
-parser.add_argument('--no_cuda_streams', action='store_true',
-                    help='do not use multiple cuda streams which are used to '
-                    'speed up gossiping')
-# --------------------------------------------------------------------------- #
+# # --------------------------------------------------------------------------- #
+# # Parse command line arguments (CLAs):
+# # --------------------------------------------------------------------------- #
+# parser = argparse.ArgumentParser(description='Playground')
+# parser.add_argument('--all_reduce', default='False', type=str,
+#                     help='whether to use all-reduce or gossip')
+# parser.add_argument('--batch_size', default=32, type=int,
+#                     help='per-agent batch size')
+# parser.add_argument('--lr', default=0.1, type=float,
+#                     help='reference learning rate (for 256 sample batch-size)')
+# parser.add_argument('--num_dataloader_workers', default=10, type=int,
+#                     help='number of dataloader workers to fork from main')
+# parser.add_argument('--num_epochs', default=90, type=int,
+#                     help='number of epochs to train')
+# parser.add_argument('--num_iterations_per_training_epoch', default=None,
+#                     type=int, help='number of iterations to run in the '
+#                     'training loop. To be used only for testing - to allow '
+#                     'training loop to exit early. None indicates that the '
+#                     'number of iterations per epoch will be '
+#                     '(num training instances)/(batch size)')
+# parser.add_argument('--momentum', default=0.9, type=float,
+#                     help='optimization momentum')
+# parser.add_argument('--weight_decay', default=1e-4, type=float,
+#                     help='regularization applied to non batch-norm weights')
+# parser.add_argument('--nesterov', default='False', type=str,
+#                     help='whether to use nesterov style momentum'
+#                          'otherwise will use regular Polyak momentum')
+# parser.add_argument('--push_sum', default='True', type=str,
+#                     help='whether to use push-sum or push-pull gossip')
+# parser.add_argument('--graph_type', default=5, type=int,
+#                     choices=GRAPH_TOPOLOGIES,
+#                     help='the graph topology to use for gossip'
+#                          'cf. the gossip graph_manager for available'
+#                          'graph topologies and their corresponding int-id')
+# parser.add_argument('--mixing_strategy', default=0, type=int,
+#                     choices=MIXING_STRATEGIES,
+#                     help='the mixing strategy to use for gossip'
+#                          'cf. the gossip mixing_manager for available'
+#                          'mixing strategies and their corresponding int-id.')
+# parser.add_argument('--schedule', nargs='+', default=None,
+#                     type=float, help='learning rate schedule')
+# parser.add_argument('--peers_per_itr_schedule', nargs='+', type=int,
+#                     help='epoch schedule of num peers to send msgs to;'
+#                          'the expected format is list[epoch, num_peers]'
+#                          'if manually specifying peers_per_itr_schedule,'
+#                          'you must specify num_peers at epoch 0; i.e.,'
+#                          'list must contain: 0, __num_peers_at_epoch_0__')
+# parser.add_argument('--overlap', default='False', type=str,
+#                     help='whether to overlap communication with computation')
+# parser.add_argument('--synch_freq', default=0, type=int,
+#                     help='max number of iterations to go without synchronizing'
+#                          'communication between nodes')
+# parser.add_argument('--warmup', default='False', type=str,
+#                     help='whether to warmup learning rate for first 5 epochs')
+# parser.add_argument('--seed', default=47, type=int,
+#                     help='seed used for ALL stochastic elements in script')
+# parser.add_argument('--resume', default='False', type=str,
+#                     help='whether to resume from previously saved checkpoint')
+# parser.add_argument('--backend', default='nccl',
+#                     choices=['nccl', 'gloo', 'mpi'],
+#                     help='torch.distributed backend')
+# parser.add_argument('--tag', default='', type=str,
+#                     help='tag used to prepend checkpoint file names')
+# parser.add_argument('--print_freq', default=10, type=int,
+#                     help='frequency (itr.) with which to print train stats')
+# parser.add_argument('--verbose', default='True', type=str,
+#                     help='whether to log everything or just warnings/errors')
+# parser.add_argument('--train_fast', default='False', type=str,
+#                     help='whether to run script with only one validation run'
+#                          '(at the end once the model is trained)')
+# parser.add_argument('--checkpoint_all', default='False', type=str,
+#                     help='True: save each agents model at each epoch'
+#                          'False: save just one (rank 0) model at each epoch')
+# parser.add_argument('--overwrite_checkpoints', default='True', type=str,
+#                     help='True: save checkpoint at each epoch with unique tag'
+#                          'False: overwrite checkpoints from one epoch to next')
+# parser.add_argument('--master_port', default='40100', type=str,
+#                     help='port used to initialize distributed backend')
+# parser.add_argument('--checkpoint_dir', default="./", type=str,
+#                     help='directory for saving log-files')
+# parser.add_argument('--network_interface_type', default='infiniband',
+#                     choices=['infiniband', 'ethernet'],
+#                     help='network interface type to be used for communication')
+# parser.add_argument('--num_itr_ignore', type=int, default=10,
+#                     help='number of iterations to ignore before timing. A '
+#                          'value of 0 would imply no iterations should be '
+#                          'ignored')
+# parser.add_argument('--dataset_dir', type=str)
+# parser.add_argument('--no_cuda_streams', action='store_true',
+#                     help='do not use multiple cuda streams which are used to '
+#                     'speed up gossiping')
+# # --------------------------------------------------------------------------- #
 
 
 def main():
