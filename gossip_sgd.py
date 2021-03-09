@@ -728,6 +728,6 @@ def init_model():
     return model
 
 
-if __name__ == '__main__':
-    mp.set_start_method('forkserver', force=True)
-    main()
+# if __name__ == '__main__':
+mp.set_start_method('forkserver', force=True)
+main()
