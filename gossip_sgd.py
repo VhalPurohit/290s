@@ -165,6 +165,7 @@ def main():
 
     global args, state, log
     args = parse_args()
+    print("Successfully parsed the args")
 
     log = make_logger(args.rank, args.verbose)
     log.info('args: {}'.format(args))
@@ -177,6 +178,8 @@ def main():
 
     # init model, loss, and optimizer
     model = init_model()
+    print("Model has been initialized")
+
     if args.all_reduce:
         model = torch.nn.parallel.DistributedDataParallel(model)
     else:
