@@ -643,7 +643,7 @@ def parse_args():
             self.checkpoint_dir = "./"
             self.network_interface_type = 'infiniband'
             self.num_itr_ignore = 10
-            self.dataset_dir = 
+            # self.dataset_dir = "./data/"
             self.no_cuda_streams = None
 
 
