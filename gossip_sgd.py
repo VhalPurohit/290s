@@ -106,7 +106,7 @@ parser.add_argument('--mixing_strategy', default=0, type=int,
                     help='the mixing strategy to use for gossip'
                          'cf. the gossip mixing_manager for available'
                          'mixing strategies and their corresponding int-id.')
-parser.add_argument('--schedule', nargs='+', default='30 0.1 60 0.1 80 0.1',
+parser.add_argument('--schedule', nargs='+', default=None,
                     type=float, help='learning rate schedule')
 parser.add_argument('--peers_per_itr_schedule', nargs='+', type=int,
                     help='epoch schedule of num peers to send msgs to;'
