@@ -67,6 +67,10 @@ MIXING_STRATEGIES = {
     -1: None,
 }
 
+import sys
+sys.argv=['']
+del sys
+
 # --------------------------------------------------------------------------- #
 # Parse command line arguments (CLAs):
 # --------------------------------------------------------------------------- #
@@ -728,6 +732,6 @@ def init_model():
     return model
 
 
-# if __name__ == '__main__':
-mp.set_start_method('forkserver', force=True)
-main()
+if __name__ == '__main__':
+    mp.set_start_method('forkserver', force=True)
+    main()
