@@ -137,7 +137,7 @@ parser.add_argument('--verbose', default='True', type=str,
 parser.add_argument('--train_fast', default='False', type=str,
                     help='whether to run script with only one validation run'
                          '(at the end once the model is trained)')
-parser.add_argument('--checkpoint_all', default='True', type=str,
+parser.add_argument('--checkpoint_all', default='False', type=str,
                     help='True: save each agents model at each epoch'
                          'False: save just one (rank 0) model at each epoch')
 parser.add_argument('--overwrite_checkpoints', default='True', type=str,
@@ -190,7 +190,7 @@ def main():
                                    verbose=args.verbose,
                                    use_streams=not args.no_cuda_streams)
 
-    core_criterion = nn.KLDivLoss(reduction='batchmean').cuda()
+    core_criterion = nn.CrossEntropyLoss() #nn.KLDivLoss(reduction='batchmean').cuda()
     log_softmax = nn.LogSoftmax(dim=1)
 
     def criterion(input, kl_target):
@@ -269,7 +269,7 @@ def main():
                   'Epoch,itr,BT(s),avg:BT(s),std:BT(s),'
                   'NT(s),avg:NT(s),std:NT(s),'
                   'DT(s),avg:DT(s),std:DT(s),'
-                  'Loss,avg:Loss,Prec@1,avg:Prec@1,Prec@5,avg:Prec@5,val'
+                  'Loss,avg:Loss,Accuracy,avg:Accuracy,val'
                   .format(ws=args.world_size,
                           nw=args.num_dataloader_workers,
                           bs=args.batch_size), file=f)
@@ -296,6 +296,7 @@ def main():
         # start all agents' training loop at same time
         if not args.all_reduce:
             model.block()
+        
         train(model, criterion, optimizer,
               batch_meter, data_meter, nn_meter,
               loader, epoch, start_itr, begin_time, args.num_itr_ignore)
@@ -338,8 +339,8 @@ def main():
 
     if args.train_fast:
         val_loader = make_dataloader(args, train=False)
-        prec1 = validate(val_loader, model, criterion)
-        log.info('Test accuracy: {}'.format(prec1))
+        acc = validate(val_loader, model, criterion)
+        log.info('Test accuracy: {}'.format(acc))
 
     log.info('elapsed_time {0}'.format(elapsed_time))
 
@@ -348,8 +349,10 @@ def train(model, criterion, optimizer, batch_meter, data_meter, nn_meter,
           loader, epoch, itr, begin_time, num_itr_ignore):
 
     losses = Meter(ptag='Loss')
-    top1 = Meter(ptag='Prec@1')
-    top5 = Meter(ptag='Prec@5')
+    acc = Meter(ptag="Accuracy")
+
+    # top1 = Meter(ptag='Prec@1')
+    # top5 = Meter(ptag='Prec@5')
 
     # switch to train mode
     model.train()
@@ -369,9 +372,10 @@ def train(model, criterion, optimizer, batch_meter, data_meter, nn_meter,
     batch_time = time.time()
     for i, (batch, target) in enumerate(_train_loader, start=itr):
         target = target.cuda(non_blocking=True)
+
         # create one-hot vector from target
-        kl_target = torch.zeros(target.shape[0], 1000, device='cuda').scatter_(
-            1, target.view(-1, 1), 1)
+        # kl_target = torch.zeros(target.shape[0], 1000, device='cuda').scatter_(
+        #     1, target.view(-1, 1), 1)
 
         if num_itr_ignore == 0:
             data_meter.update(time.time() - batch_time)
@@ -381,7 +385,7 @@ def train(model, criterion, optimizer, batch_meter, data_meter, nn_meter,
         # ----------------------------------------------------------- #
         nn_time = time.time()
         output = model(batch)
-        loss = criterion(output, kl_target)
+        loss = criterion(output, target)
         loss.backward()
 
         if i % 100 == 0:
@@ -402,21 +406,23 @@ def train(model, criterion, optimizer, batch_meter, data_meter, nn_meter,
 
         log_time = time.time()
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output, target, topk=(1, 5))
+        acc_val = accuracy(output, target)
+
         losses.update(loss.item(), batch.size(0))
-        top1.update(prec1.item(), batch.size(0))
-        top5.update(prec5.item(), batch.size(0))
+        acc.update(acc_val, batch.size(0))
+        
+        # top1.update(prec1.item(), batch.size(0))
+        # top5.update(prec5.item(), batch.size(0))
         if i % args.print_freq == 0:
             with open(args.out_fname, '+a') as f:
                 print('{ep},{itr},{bt},{nt},{dt},'
                       '{loss.val:.4f},{loss.avg:.4f},'
-                      '{top1.val:.3f},{top1.avg:.3f},'
-                      '{top5.val:.3f},{top5.avg:.3f},-1'
+                      '{acc.val:.3f},{acc.avg:.3f},'
+                      '-1'
                       .format(ep=epoch, itr=i,
                               bt=batch_meter,
                               dt=data_meter, nt=nn_meter,
-                              loss=losses, top1=top1,
-                              top5=top5), file=f)
+                              loss=losses, acc=acc), file=f)
         if num_itr_ignore > 0:
             num_itr_ignore -= 1
         log_time = time.time() - log_time
@@ -429,21 +435,21 @@ def train(model, criterion, optimizer, batch_meter, data_meter, nn_meter,
     with open(args.out_fname, '+a') as f:
         print('{ep},{itr},{bt},{nt},{dt},'
               '{loss.val:.4f},{loss.avg:.4f},'
-              '{top1.val:.3f},{top1.avg:.3f},'
-              '{top5.val:.3f},{top5.avg:.3f},-1'
+              '{acc.val:.3f},{acc.avg:.3f},'
+              '-1'
               .format(ep=epoch, itr=i,
                       bt=batch_meter,
                       dt=data_meter, nt=nn_meter,
-                      loss=losses, top1=top1,
-                      top5=top5), file=f)
+                      loss=losses, acc=acc), file=f)
 
 
 def validate(val_loader, model, criterion):
     """ Evaluate model using criterion on validation set """
 
     losses = Meter(ptag='Loss')
-    top1 = Meter(ptag='Prec@1')
-    top5 = Meter(ptag='Prec@5')
+    acc = Meter(ptag='Accuracy')
+    # top1 = Meter(ptag='Prec@1')
+    # top5 = Meter(ptag='Prec@5')
 
     # switch to evaluate mode
     model.eval()
@@ -461,32 +467,38 @@ def validate(val_loader, model, criterion):
             loss = criterion(output, kl_target)
 
             # measure accuracy and record loss
-            prec1, prec5 = accuracy(output, target, topk=(1, 5))
+            # prec1, prec5 = accuracy(output, target, topk=())
+            acc_val = accuracy(output, target)
             losses.update(loss.item(), features.size(0))
-            top1.update(prec1.item(), features.size(0))
-            top5.update(prec5.item(), features.size(0))
+            acc.update(acc_val, features.size(0))
+            # top1.update(prec1.item(), features.size(0))
+            # top5.update(prec5.item(), features.size(0))
 
-        log.info(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
-                 .format(top1=top1, top5=top5))
+        log.info(' * Accuracy {acc.avg:.3f}'.format(acc=acc))
 
-    return top1.avg
+    return acc.avg
 
 
-def accuracy(output, target, topk=(1,)):
-    """ Computes the precision@k for the specified values of k """
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
+# def accuracy(output, target, topk=(1,)):
+#     """ Computes the precision@k for the specified values of k """
+#     with torch.no_grad():
+#         maxk = max(topk)
+#         batch_size = target.size(0)
 
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
+#         _, pred = output.topk(maxk, 1, True, True)
+#         pred = pred.t()
+#         correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
+#         res = []
+#         for k in topk:
+#             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+#             res.append(correct_k.mul_(100.0 / batch_size))
+#         return res
+
+def accuracy(output, target):
+    assert output.shape[0] == target.shape[0]
+    _, predicted = torch.max(output.data, 1)
+    return (target==predicted).sum().item()/output.shape[0]
 
 
 def update_state(state, update_dict):
@@ -537,24 +549,30 @@ def update_learning_rate(optimizer, epoch, itr=None, itr_per_epoch=None,
             param_group['lr'] = lr
 
 
-def make_dataloader(args, train=True):
+def make_dataloader(args, train=True, download=True):
     """ Returns train/val distributed dataloaders MNIST """
 
-    data_dir = args.dataset_dir
-    train_dir = os.path.join(data_dir, 'train')
-    val_dir = os.path.join(data_dir, 'val')
+    # data_dir = args.dataset_dir
+    # train_dir = os.path.join(data_dir, 'train')
+    # val_dir = os.path.join(data_dir, 'val')
 
     # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
     #                                  std=[0.229, 0.224, 0.225])
+    transform = transforms.Compose(
+                [transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     if train:
+
+        train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                                download=download, transform=transform)
         # log.debug('fpaths train {}'.format(train_dir))
-        train_dataset = datasets.MNIST('/files/', train=True, download=True,
-                                    transform=torchvision.transforms.Compose([
-                                    torchvision.transforms.ToTensor(),
-                                    torchvision.transforms.Normalize(
-                                        (0.1307,), (0.3081,))
-                                    ]))
+        # train_dataset = datasets.MNIST('/files/', train=True, download=True,
+        #                             transform=torchvision.transforms.Compose([
+        #                             torchvision.transforms.ToTensor(),
+        #                             torchvision.transforms.Normalize(
+        #                                 (0.1307,), (0.3081,))
+        #                             ]))
 
         # sampler produces indices used to assign each agent data samples
         train_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -574,12 +592,8 @@ def make_dataloader(args, train=True):
         # log.debug('fpaths val {}'.format(val_dir))
 
         val_loader = torch.utils.data.DataLoader(
-            torchvision.datasets.MNIST('/files/', train=False, download=True,
-                                    transform=torchvision.transforms.Compose([
-                                    torchvision.transforms.ToTensor(),
-                                    torchvision.transforms.Normalize(
-                                        (0.1307,), (0.3081,))
-                                    ])),
+            torchvision.datasets.CIFAR10(root='./data', train=True,
+                                        download=download, transform=transform),
             batch_size=args.batch_size, shuffle=False,
             num_workers=args.num_dataloader_workers, pin_memory=True)
 
@@ -700,12 +714,13 @@ def init_model():
         Fully connected layer <-- Gaussian weights (mean=0, std=0.01)
         gamma of last Batch norm layer of each residual block <-- 0
     """
-    model = models.resnet50()
-    for m in model.modules():
-        if isinstance(m, Bottleneck):
-            num_features = m.bn3.num_features
-            m.bn3.weight = Parameter(torch.zeros(num_features))
-    model.fc.weight.data.normal_(0, 0.01)
+    model = models.resnet18()
+    # model = models.resnet50()
+    # for m in model.modules():
+    #     if isinstance(m, Bottleneck):
+    #         num_features = m.bn3.num_features
+    #         m.bn3.weight = Parameter(torch.zeros(num_features))
+    # model.fc.weight.data.normal_(0, 0.01)
     model.cuda()
     return model
 
