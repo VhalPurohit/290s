@@ -1,3 +1,5 @@
+Minor tweaks to fbReasearch's gossip learning framework
+
 # Stochastic Gradient Push
 #### *Gossip-based distributed optimization algorithms implemented in PyTorch*
 
